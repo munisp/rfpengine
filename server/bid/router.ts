@@ -48,9 +48,11 @@ function nextWorkspaceData(
 
 export const bidRouter = router({
   list: protectedProcedure.query(({ ctx }) => listWorkspaces(ctx.user.id)),
-  reusableEvidence: protectedProcedure.query(({ ctx }) =>
-    reusableEvidence(ctx.user.id)
-  ),
+  reusableEvidence: protectedProcedure
+    .input(z.object({ workspaceId }).optional())
+    .query(({ ctx, input }) =>
+      reusableEvidence(ctx.user.id, input?.workspaceId)
+    ),
 
   create: protectedProcedure
     .input(z.object({ data: workspaceDataSchema }))

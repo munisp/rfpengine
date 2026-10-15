@@ -52,10 +52,12 @@ import {
   TypeBadge,
 } from "@/components/bid/ui";
 import { Compliance, Studio } from "@/components/bid/Response";
+import PackageResponse from "@/components/bid/PackageResponse";
 import Pricing from "@/components/bid/Pricing";
 import Library from "@/components/bid/Library";
 import ClaimReview from "@/components/bid/ClaimReview";
 import Capture from "@/components/capture/Capture";
+import TraceDiagnostics from "@/components/bid/TraceDiagnostics";
 
 function storedSamples(): Workspace[] {
   try {
@@ -73,6 +75,7 @@ export default function Home() {
   const [samples, setSamples] = useState<Workspace[]>(storedSamples);
   const [explore, setExplore] = useState(false);
   const demo = !user || explore;
+  const isAuthenticated = Boolean(user) && !explore;
   const list = trpc.bid.list.useQuery(undefined, {
     enabled: !!user && !demo,
     retry: false,
@@ -147,10 +150,13 @@ export default function Home() {
     window.addEventListener("beforeunload", preventUnsavedExit);
     return () => window.removeEventListener("beforeunload", preventUnsavedExit);
   }, [dirty]);
-  const reusable = trpc.bid.reusableEvidence.useQuery(undefined, {
-    enabled: !!user && !demo && modal === "reuse",
-    retry: false,
-  });
+  const reusable = trpc.bid.reusableEvidence.useQuery(
+    current ? { workspaceId: current.id } : undefined,
+    {
+      enabled: !!user && !demo && modal === "reuse",
+      retry: false,
+    }
+  );
   const alerts = trpc.bid.alerts.useQuery(undefined, {
     enabled: !!user && !demo && modal === "alerts",
     retry: false,
@@ -433,6 +439,18 @@ export default function Home() {
     } catch (e) {
       handleError(e);
     }
+  }
+  async function saveBeforePackage(): Promise<boolean> {
+    if (!current || demo) return false;
+    if (!dirty) return true;
+    const saved = await save();
+    if (!saved) {
+      toast.error(
+        "The response package was not checked because unsaved edits could not be saved."
+      );
+      return false;
+    }
+    return true;
   }
   const openImport = () => {
     setFile(null);
@@ -977,6 +995,13 @@ export default function Home() {
               onDraft={(id, instruction) => runAI("draft", id, instruction)}
               onQuality={() => runAI("quality")}
               onExport={exportFile}
+              packageAction={
+                <PackageResponse
+                  workspace={current}
+                  demo={demo}
+                  ensureSaved={saveBeforePackage}
+                />
+              }
               saving={saving}
               busy={busy}
             />
@@ -1317,6 +1342,7 @@ export default function Home() {
                     restricted data.
                   </p>
                 </section>
+                <TraceDiagnostics authenticated={isAuthenticated} />
               </div>
             </>
           ) : (

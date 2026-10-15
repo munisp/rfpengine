@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   BookOpen,
   Check,
@@ -389,6 +389,7 @@ export function Studio({
   onDraft,
   onQuality,
   onExport,
+  packageAction,
   saving,
   busy,
 }: {
@@ -398,6 +399,7 @@ export function Studio({
   onDraft: (id: string, instruction: string) => void;
   onQuality: () => void;
   onExport: (format: "docx" | "xlsx") => void;
+  packageAction?: ReactNode;
   saving: boolean;
   busy: boolean;
 }) {
@@ -433,6 +435,7 @@ export function Studio({
               <ShieldCheck size={16} />
               Quality check
             </button>
+            {packageAction}
             <button className="button primary" onClick={() => onExport("docx")}>
               <FileCheck2 size={16} />
               Export response

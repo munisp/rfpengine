@@ -44,3 +44,13 @@ Design retains Capture Room Noir, asymmetric list/detail/company-comparison pane
 ### Bounded discovery correction
 
 Discovery is cursor-paginated with visible totals, and matching advances a durable account cursor over bounded opportunity batches, not a silent fixed inbox ceiling. Automatic job origin is persisted and policy/opt-in is checked again during execution. Multi-link attachment names are normalized uniquely before notice schema validation so a repeated provider label cannot discard a notice.
+
+## Tracing, recovery and complete response assembly
+
+Implement OpenTelemetry in the existing Node/Python services: W3C request context -> authenticated fixed-destination live-evidence client -> server request -> logical reservation commit -> fresh transaction attempts and backoff. No baggage, raw SQL, credentials, payloads or raw idempotency keys are exported. A server-owned per-user service-principal map preserves tenant isolation; local bootstrap adds only an explicit development owner map. Collector/Jaeger is optional local infrastructure, and the existing dark frontend gains a trace diagnostic.
+
+Draft a sourced catastrophic-loss runbook covering write quiescence, old-primary fencing, WAL/replay and durability, promotion/PITR, same-key reconciliation, external receipt checks, MySQL/object storage/secrets and supervised reopening. Exercise only owned local PostgreSQL standby fixtures; never promote or erase production.
+
+Build actual downloadable ZIP response drafts for Sources Sought/RFI/RFP from saved workspace data, with response volumes, compliance/pricing, source inventory, unresolved-artifact checks and SHA256 manifest. Preserve permissions/company evidence boundaries and clearly flag missing forms/signatures/extraction. No universal conformity, official signature or automated buyer submission is claimed.
+
+Node modules live under server/observability; Python spans under bidforge_live; response assembly under server/bid with authenticated routes/frontend controls; tracing infrastructure under monitoring/tracing; recovery docs and isolated integration tests under docs/tests. All logic and registrations are implemented, with actual frontend/service verification and observed readiness gates rather than an invented percentage.

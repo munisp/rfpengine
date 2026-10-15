@@ -24,6 +24,7 @@ EXPORTER_ENV = STACK_DIR / "pg-exporter.env"
 TOKENS_FILE = SECRETS_DIR / "api-tokens.json"
 METRICS_TOKEN_FILE = SECRETS_DIR / "metrics-token"
 ALERT_WEBHOOK_TOKEN_FILE = SECRETS_DIR / "alert-webhook-token"
+PROXY_PRINCIPALS_FILE = SECRETS_DIR / "live-proxy-principals.json"
 REQUIRED_FILES = (MYSQL_ENV, POSTGRES_ENV, APP_ENV, LIVE_ENV, EXPORTER_ENV, TOKENS_FILE, METRICS_TOKEN_FILE, ALERT_WEBHOOK_TOKEN_FILE)
 
 
@@ -55,9 +56,22 @@ def initialized() -> bool:
     return all(path.is_file() for path in REQUIRED_FILES)
 
 
+def ensure_proxy_principal() -> None:
+    """Add only the explicit local owner mapping; never rotate an existing API token."""
+    if PROXY_PRINCIPALS_FILE.exists():
+        return
+    principals = json.loads(TOKENS_FILE.read_text())
+    admin = next(key for key, value in principals.items()
+                 if value.get("role") == "admin" and value.get("actor_id") == "local-test-owner"
+                 and value.get("tenant_id") == "bidforge-local")
+    write_private(PROXY_PRINCIPALS_FILE,
+                  json.dumps({"local-test-owner": {"token": admin}}, indent=2) + "\n", mode=0o444)
+
+
 def initialize(force: bool = False) -> None:
     exists = [path for path in REQUIRED_FILES if path.exists()]
     if initialized() and not force:
+        ensure_proxy_principal()
         print("[local-stack] Existing local credentials retained; no secrets were printed.")
         return
     if exists and not force:
@@ -160,6 +174,7 @@ def initialize(force: bool = False) -> None:
     write_private(TOKENS_FILE, json.dumps(principals, indent=2, sort_keys=True) + "\n", mode=0o444)
     write_private(METRICS_TOKEN_FILE, monitor_token + "\n", mode=0o444)
     write_private(ALERT_WEBHOOK_TOKEN_FILE, alert_webhook_token + "\n", mode=0o444)
+    ensure_proxy_principal()
     print("[local-stack] Created private development credentials in .local-stack/; no secrets were printed.")
 
 

@@ -1,0 +1,44 @@
+# Local testing overlay only. Jaeger memory storage is not a durable production trace backend.
+services:
+  app:
+    environment:
+      BIDFORGE_TRACING_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_TRACES_SAMPLER_ARG: "1"
+      OTEL_DEPLOYMENT_ENVIRONMENT: local
+      BIDFORGE_LIVE_EVIDENCE_URL: http://live-evidence:8080
+      BIDFORGE_LIVE_PROXY_PRINCIPALS_FILE: /run/secrets/live-proxy-principals.json
+    secrets:
+      - source: live-proxy-principals
+        target: live-proxy-principals.json
+    depends_on:
+      live-evidence:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+  live-evidence:
+    environment:
+      BIDFORGE_TRACING_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_TRACES_SAMPLER_ARG: "1"
+      OTEL_DEPLOYMENT_ENVIRONMENT: local
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.162.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./monitoring/tracing/collector.yml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "127.0.0.1:14318:4318"
+      - "127.0.0.1:13133:13133"
+    depends_on:
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.22.0
+    ports:
+      - "127.0.0.1:16686:16686"
+    restart: unless-stopped
+secrets:
+  live-proxy-principals:
+    file: ./.local-stack/secrets/live-proxy-principals.json

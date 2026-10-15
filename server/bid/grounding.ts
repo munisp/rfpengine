@@ -4,6 +4,7 @@ import {
   type ResponseSection,
   type WorkspaceData,
 } from "../../shared/bid";
+import type { CompanyProfile } from "../../shared/capture";
 
 export type GroundingIssue = {
   severity: "Critical" | "Warning" | "Info";
@@ -42,8 +43,89 @@ export type DraftCandidate = {
   gaps: string[];
 };
 
+/** The immutable Capture response identity authoritative for one bid workspace. */
+export type CapturedProfileBinding = {
+  profileId: string;
+  profileVersion: number;
+  profileSnapshot: CompanyProfile;
+};
+
+export type CapturedEvidenceScope =
+  | { status: "unknown" }
+  | { status: "trusted"; profileEvidenceId: string }
+  | { status: "same-profile-different-version" }
+  | { status: "other-profile" }
+  | { status: "invalid" };
+
 const sameJson = (left: unknown, right: unknown) =>
   JSON.stringify(left) === JSON.stringify(right);
+
+const isSolicitation = (document: EvidenceDocument) =>
+  document.category.trim().toLowerCase() === "solicitation";
+
+/**
+ * Finds a byte-for-byte frozen profile source after Capture's deterministic
+ * workspace copy. This also safely recognizes pre-provenance legacy response
+ * snapshots when they are restored.
+ */
+export function frozenProfileEvidenceId(
+  document: EvidenceDocument,
+  binding: CapturedProfileBinding
+): string | null {
+  const source = binding.profileSnapshot.evidence.find(
+    candidate =>
+      candidate.id === document.provenance?.profileEvidenceId ||
+      (candidate.approved &&
+        !isSolicitation(candidate) &&
+        document.name ===
+          `${binding.profileSnapshot.name} · ${candidate.name}` &&
+        document.category === "Company evidence" &&
+        document.text === candidate.text)
+  );
+  if (!source || !source.approved || isSolicitation(source)) return null;
+  return document.name === `${binding.profileSnapshot.name} · ${source.name}` &&
+    document.category === "Company evidence" &&
+    document.text === source.text
+    ? source.id
+    : null;
+}
+
+/**
+ * A client-supplied provenance label never grants authority by itself. It is
+ * trusted only when it resolves to the response's immutable profile snapshot.
+ */
+export function capturedEvidenceScope(
+  document: EvidenceDocument,
+  binding: CapturedProfileBinding
+): CapturedEvidenceScope {
+  const provenance = document.provenance;
+  if (!provenance) {
+    const profileEvidenceId = frozenProfileEvidenceId(document, binding);
+    return profileEvidenceId
+      ? { status: "trusted", profileEvidenceId }
+      : { status: "unknown" };
+  }
+  if (provenance.profileId !== binding.profileId)
+    return { status: "other-profile" };
+  if (provenance.profileVersion !== binding.profileVersion)
+    return { status: "same-profile-different-version" };
+  const profileEvidenceId = frozenProfileEvidenceId(document, binding);
+  return profileEvidenceId === provenance.profileEvidenceId
+    ? { status: "trusted", profileEvidenceId }
+    : { status: "invalid" };
+}
+
+export function canonicalCapturedProfileProvenance(
+  binding: CapturedProfileBinding,
+  profileEvidenceId: string
+): NonNullable<EvidenceDocument["provenance"]> {
+  return {
+    kind: "capture-profile",
+    profileId: binding.profileId,
+    profileVersion: binding.profileVersion,
+    profileEvidenceId,
+  };
+}
 
 /** A citation is deliberately literal: `Exact document name | exact source quote`. */
 export function isVerifiedCitation(

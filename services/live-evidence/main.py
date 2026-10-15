@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import re
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
@@ -19,9 +20,10 @@ from bidforge_live.repository import Repository
 from bidforge_live.observability import RetryPolicy, TransactionTelemetry
 from bidforge_live.routes import router as enterprise_router
 from bidforge_live.service import router as acquisition_router
+from bidforge_live.tracing import create_tracing, is_safe_request_id, route_pattern
 
 
-def create_app(repository=None, tokens=None, verifier_contracts=None, telemetry=None):
+def create_app(repository=None, tokens=None, verifier_contracts=None, telemetry=None, tracing=None):
     if tokens is None:
         path=os.environ.get('BIDFORGE_API_TOKENS_FILE')
         raw=os.environ.get('BIDFORGE_API_TOKENS')
@@ -51,15 +53,32 @@ def create_app(repository=None, tokens=None, verifier_contracts=None, telemetry=
         telemetry=TransactionTelemetry(RetryPolicy(attempts=int(os.getenv('BIDFORGE_RETRY_ATTEMPTS','3')),
             base_delay=float(os.getenv('BIDFORGE_RETRY_BASE_DELAY','0.05')),
             max_delay=float(os.getenv('BIDFORGE_RETRY_MAX_DELAY','0.5'))))
-    app=FastAPI(title='BidForge Live Evidence API',version='1.1.0',docs_url=None,redoc_url=None)
+    if tracing is None:
+        tracing=create_tracing()
+    if hasattr(telemetry,'set_tracing'):
+        telemetry.set_tracing(tracing)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Each app owns its provider.  We deliberately never set a process-global
+        # provider, avoiding conflicts between repeated app-factory test instances.
+        tracing.start()
+        try:
+            yield
+        finally:
+            tracing.shutdown()
+
+    app=FastAPI(title='BidForge Live Evidence API',version='1.1.0',docs_url=None,redoc_url=None,lifespan=lifespan)
     app.state.bidforge_repository=repository
     app.state.verifier_contracts=verifier_contracts
     app.state.transaction_telemetry=telemetry
+    app.state.tracing=tracing
 
     @app.middleware('http')
     async def authenticate(request:Request,call_next):
         supplied_id=request.headers.get('X-Request-ID','')
-        request.state.request_id=supplied_id if re.fullmatch(r'[A-Za-z0-9_-]{1,64}',supplied_id) else uuid4().hex
+        current_id=getattr(request.state,'request_id',None)
+        request.state.request_id=current_id if is_safe_request_id(current_id) else (supplied_id if re.fullmatch(r'[A-Za-z0-9_-]{1,64}',supplied_id) else uuid4().hex)
         if request.url.path not in {'/health','/docs','/openapi.json'} and not request.url.path.startswith('/static/'):
             raw=request.headers.get('Authorization','')
             supplied=raw[7:] if raw.startswith('Bearer ') else ''
@@ -75,6 +94,31 @@ def create_app(repository=None, tokens=None, verifier_contracts=None, telemetry=
         response.headers['X-Content-Type-Options']='nosniff'
         response.headers['X-Request-ID']=request.state.request_id
         return response
+
+    @app.middleware('http')
+    async def trace_request(request:Request,call_next):
+        # This middleware is intentionally outside authentication. traceparent only
+        # establishes correlation; auth still exclusively verifies Authorization.
+        supplied_id=request.headers.get('X-Request-ID','')
+        current_id=getattr(request.state,'request_id',None)
+        request.state.request_id=current_id if is_safe_request_id(current_id) else (supplied_id if is_safe_request_id(supplied_id) else uuid4().hex)
+        with tracing.server_span(traceparent=request.headers.get('traceparent'),method=request.method,request_id=request.state.request_id) as span:
+            trace_id,_=tracing.current_ids()
+            try:
+                response=await call_next(request)
+            except Exception:
+                tracing.set_error(span,'request_failed')
+                raise
+            finally:
+                pattern=route_pattern(request.scope)
+                span.update_name('HTTP '+request.method+' '+pattern)
+                span.set_attribute('http.route',pattern)
+            span.set_attribute('http.response.status_code',response.status_code)
+            if response.status_code>=500:
+                tracing.set_error(span,'http_server_failure')
+            if trace_id:
+                response.headers['X-Trace-ID']=trace_id
+            return response
 
     app.mount('/static',StaticFiles(directory=str(Path(__file__).parent/'static')),name='static')
 
@@ -106,6 +150,21 @@ def create_app(repository=None, tokens=None, verifier_contracts=None, telemetry=
             'database_timeouts_ms':{'lock':getattr(repository,'lock_timeout_ms',None),'statement':getattr(repository,'statement_timeout_ms',None)},
             'metrics_path':'/metrics','correlation_header':'X-Request-ID',
             'retry_scope':'fresh whole transaction with unchanged plan/hash/idempotency key'}
+
+    @app.get('/v1/operations/identity',tags=['operations'])
+    def identity_status(request:Request):
+        # Middleware verifies the principal; return no tenant or token material.
+        try:
+            with repository.tx() as conn:conn.execute('SELECT 1')
+        except Exception:
+            return JSONResponse({'authenticated':True,'status':'unavailable'},status_code=503)
+        return {'authenticated':True,'status':'connected','tracing_active':tracing.active}
+
+    @app.get('/v1/operations/tracing-status',tags=['operations'])
+    def tracing_status(request:Request):
+        if request.state.role!='admin':
+            return JSONResponse({'detail':'Administrator required'},status_code=403)
+        return tracing.status()
 
     for route in list(enterprise_router.routes):
         if route.path in {'/v1/assessments/run','/v1/certificates/{certificate_id}/verification-runs'}:
