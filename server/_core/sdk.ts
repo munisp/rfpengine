@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { isLocalTestMode, LOCAL_TEST_OWNER_OPEN_ID } from "./localTestMode";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -31,7 +32,7 @@ const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserI
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
     console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
-    if (!ENV.oAuthServerUrl) {
+    if (!ENV.oAuthServerUrl && !isLocalTestMode()) {
       console.error(
         "[OAuth] ERROR: MANUS_OAUTH_API_URL is not configured! Set MANUS_OAUTH_API_URL environment variable."
       );
@@ -294,9 +295,16 @@ class SDKServer {
     const sessionUserId = session.openId;
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
+    const isLocalTestOwner =
+      isLocalTestMode() && sessionUserId === LOCAL_TEST_OWNER_OPEN_ID;
 
     // If user not in DB, sync from OAuth server automatically
     if (!user) {
+      // The local password route creates this user before minting the existing
+      // signed session. Never exchange a local session with hosted OAuth.
+      if (isLocalTestOwner) {
+        throw ForbiddenError("User not found");
+      }
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
         await db.upsertUser({

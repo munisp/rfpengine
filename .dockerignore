@@ -1,7 +1,15 @@
 node_modules
+**/node_modules/
 dist
 .git
+.github/
+.local-stack/
 .env
 .env.*
 .manus-logs
 *.manus-starter-*
+coverage/
+*.log
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/

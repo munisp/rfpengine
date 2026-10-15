@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from psycopg import Error as PsycopgError
+from starlette.concurrency import run_in_threadpool
+from .observability import TransientExhausted, CommitOutcomeUnknown
 
 from .repository import ConflictError, NotFoundError, Repository
 
@@ -170,9 +173,19 @@ async def create_allocation_plan(request:Request, ctx:dict[str,str]=Depends(requ
 async def commit_allocation_plan(plan_id:str, request:Request, ctx:dict[str,str]=Depends(require("compliance","admin"))):
     data=await payload(request)
     # This is an internal ledger commit only; no provider or booking API is called here.
-    if not isinstance(data.get("expected_hash"),str) or not isinstance(data.get("idempotency_key"),str):
-        raise HTTPException(status_code=422,detail="expected_hash and idempotency_key are required")
-    return _run(lambda:get_repository(request).commit_plan(ctx["tenant"],plan_id,data["expected_hash"],data["idempotency_key"],ctx["actor"]))
+    expected=data.get("expected_hash"); key=data.get("idempotency_key")
+    if not isinstance(expected,str) or not re.fullmatch(r"[0-9a-f]{64}",expected) or not isinstance(key,str) or not 1 <= len(key) <= 128:
+        raise HTTPException(status_code=422,detail="64-character expected_hash and bounded idempotency_key required")
+    try:
+        result=await run_in_threadpool(lambda: _run(lambda: request.app.state.transaction_telemetry.commit(
+            get_repository(request),ctx["tenant"],plan_id,expected,key,ctx["actor"],request.state.request_id)))
+        return result
+    except TransientExhausted as exc:
+        raise HTTPException(status_code=503,detail={"code":"TRANSACTION_RETRY_EXHAUSTED","sqlstate":exc.sqlstate,
+            "request_id":request.state.request_id,"reconcile_with_same_key":True},headers={"Retry-After":"1"}) from None
+    except CommitOutcomeUnknown:
+        raise HTTPException(status_code=503,detail={"code":"COMMIT_OUTCOME_UNKNOWN",
+            "request_id":request.state.request_id,"reconcile_with_same_key":True},headers={"Retry-After":"1"}) from None
 
 @router.get("/assessments")
 def list_assessments(request:Request, limit:int=100, cursor:str|None=None, ctx:dict[str,str]=Depends(require("reader","analyst","compliance","admin"))):

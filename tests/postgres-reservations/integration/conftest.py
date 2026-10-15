@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
@@ -10,13 +11,16 @@ import psycopg
 import pytest
 from psycopg.rows import dict_row
 
+SOURCE_ROOT = Path(os.getenv("BIDFORGE_SOURCE_ROOT", str(Path(__file__).resolve().parents[3] / "services/live-evidence")))
+if SOURCE_ROOT.is_dir():
+    sys.path.insert(0,str(SOURCE_ROOT))
 from bidforge_live.repository import Repository
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class BoundedRepository(Repository):
-    """Test harness only: the original repository has no explicit timeout policy."""
+    """Test harness uses tighter timeouts than production for deterministic contention tests."""
     def __init__(self, dsn, *, name=None, lock_timeout="5s"):
         super().__init__(dsn)
         self.name = name or "bf-test-" + uuid4().hex[:12]
@@ -58,7 +62,7 @@ def postgres_dsn(request):
             pytest.fail("Refusing external database whose name does not end in _test", pytrace=False)
     else:
         pytest.fail("Unknown BIDFORGE_TEST_BACKEND", pytrace=False)
-    Repository(dsn).migrate(ROOT / "schema.sql")
+    Repository(dsn).migrate(SOURCE_ROOT / "schema.sql" if SOURCE_ROOT.is_dir() else ROOT / "schema.sql")
     with psycopg.connect(dsn) as conn:
         assert conn.execute("SHOW transaction_isolation").fetchone()[0] == "read committed"
         assert int(conn.execute("SHOW server_version_num").fetchone()[0]) >= 140000
