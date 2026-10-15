@@ -23,6 +23,20 @@ export const sectionSchema = z.object({
   citations: z.array(z.string()),
   gaps: z.array(z.string()),
 });
+
+/**
+ * Server-verified origin for evidence copied from a frozen Capture profile.
+ * This is deliberately optional: ordinary collaborative workspaces and manual
+ * imports have no asserted company-profile origin.
+ */
+export const captureProfileEvidenceProvenanceSchema = z
+  .object({
+    kind: z.literal("capture-profile"),
+    profileId: z.string().min(1).max(36),
+    profileVersion: z.number().int().positive(),
+    profileEvidenceId: z.string().min(1).max(160),
+  })
+  .strict();
 export const documentSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -30,6 +44,7 @@ export const documentSchema = z.object({
   text: z.string(),
   approved: z.boolean(),
   uploadedAt: z.string(),
+  provenance: captureProfileEvidenceProvenanceSchema.optional(),
 });
 export const scenarioSchema = z.object({
   id: z.string(),

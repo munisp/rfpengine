@@ -70,3 +70,13 @@ Read-only integration findings were corrected: duplicate attachment labels canno
 - [ ] Real signed-in company/source CRUD, shared-role response workflow and durable API browser acceptance.
 - [ ] Publish the saved version, register and validate continuous scheduler callbacks with real account data.
 - [ ] Supply authorized SAM.gov key and any licensed provider feed access; accept live-source mapping/coverage independently.
+
+## Tracing, recovery and response assembly
+
+- [x] Correlate Node/Python requests and each complete transaction retry with safe OpenTelemetry spans; register middleware/routes, provide Collector/Jaeger and a connected frontend diagnostic without exposing credentials or changing authorization.
+- [x] Draft the sourced catastrophic-loss/failover procedure and exercise same-key reservation replay after a safely fenced, owned local standby promotion; cover split brain, durability, external receipts and MySQL/object-storage dependencies.
+- [x] Implement authenticated ZIP draft response assembly for Sources Sought/RFI/RFP with response volumes, compliance/pricing, source inventory, completeness gates and hashes; preserve profile isolation and expose missing forms/signatures without claiming universal compliance; verify frontend downloads and artifact contents.
+
+### Tracing/recovery/package evidence
+
+Node check/build passes and 126 tests pass after profile-isolation regressions. Python service 68 tests pass; actual PostgreSQL Testcontainers reservation/tracing/failover suite 30 tests pass. Real local browser verification covers saved pursuit ZIP readiness/download/hash manifest, authenticated diagnostic, seven correlated Node/Python spans with two transaction attempts and backoff, and same-key replay. Production HA/PITR, original binary attachment retention, formal release/signatures and buyer submission remain explicit operating gates; no production database or external submission was changed.

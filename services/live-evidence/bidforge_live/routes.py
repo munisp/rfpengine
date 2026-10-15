@@ -177,8 +177,10 @@ async def commit_allocation_plan(plan_id:str, request:Request, ctx:dict[str,str]
     if not isinstance(expected,str) or not re.fullmatch(r"[0-9a-f]{64}",expected) or not isinstance(key,str) or not 1 <= len(key) <= 128:
         raise HTTPException(status_code=422,detail="64-character expected_hash and bounded idempotency_key required")
     try:
-        result=await run_in_threadpool(lambda: _run(lambda: request.app.state.transaction_telemetry.commit(
-            get_repository(request),ctx["tenant"],plan_id,expected,key,ctx["actor"],request.state.request_id)))
+        tracing=request.app.state.tracing
+        captured_context=tracing.capture_context()
+        result=await run_in_threadpool(lambda: tracing.run_in_context(captured_context,lambda: _run(lambda: request.app.state.transaction_telemetry.commit(
+            get_repository(request),ctx["tenant"],plan_id,expected,key,ctx["actor"],request.state.request_id))))
         return result
     except TransientExhausted as exc:
         raise HTTPException(status_code=503,detail={"code":"TRANSACTION_RETRY_EXHAUSTED","sqlstate":exc.sqlstate,

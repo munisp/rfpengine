@@ -11,22 +11,34 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerBidRoutes } from "../bid/routes";
 import { registerCaptureRoutes } from "../capture/routes";
+import {
+  configureTracing,
+  shutdownTracing,
+  tracingMiddleware,
+} from "../observability/tracing";
+import { registerLiveEvidenceRoutes } from "../observability/liveEvidence";
 
 async function startServer() {
   assertLocalTestConfiguration();
+  configureTracing();
   const app = express();
   const server = createServer(app);
+  app.use(tracingMiddleware);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
   app.get("/api/platform/config.js", (_req, res) => {
-    res.set("Cache-Control", "no-store").type("application/javascript").send(publicPlatformScript());
+    res
+      .set("Cache-Control", "no-store")
+      .type("application/javascript")
+      .send(publicPlatformScript());
   });
   registerLocalTestAuthRoutes(app);
   registerOAuthRoutes(app);
   registerBidRoutes(app);
   registerCaptureRoutes(app);
+  registerLiveEvidenceRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",
@@ -43,9 +55,25 @@ async function startServer() {
   }
 
   const port = Number(process.env.PORT || "3000");
-  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid PORT");
-  server.on("error", error => { console.error("Server failed:", error.message); process.exit(1); });
-  server.listen(port, "0.0.0.0", () => console.log(`Server listening on port ${port}`));
+  if (!Number.isInteger(port) || port < 1 || port > 65535)
+    throw new Error("Invalid PORT");
+  server.on("error", error => {
+    console.error("Server failed:", error.message);
+    process.exit(1);
+  });
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => {
+      server.close(() => {
+        void shutdownTracing().finally(() => process.exit(0));
+      });
+    });
+  }
+  server.listen(port, "0.0.0.0", () =>
+    console.log(`Server listening on port ${port}`)
+  );
 }
 
-startServer().catch(error => { console.error(error); process.exit(1); });
+startServer().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

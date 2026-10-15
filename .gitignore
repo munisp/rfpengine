@@ -122,3 +122,6 @@ client/public/__manus__/version.json
 **/.validation-env.json
 **/.env.*
 !**/.env.example
+
+# Generated local validation artifacts (deliver separately, never production traces)
+/artifacts/

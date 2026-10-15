@@ -127,6 +127,10 @@ jobs:
         run: ./scripts/local-stack.sh up
       - name: Verify web, APIs, monitoring, alert delivery, and browser flow
         run: ./scripts/local-stack.sh test
+      - name: Enable local distributed tracing
+        run: docker compose -f compose.yaml -f compose.tracing.yaml up -d --build app live-evidence otel-collector jaeger
+      - name: Verify cross-service retry traces and actual draft-package UI download
+        run: python scripts/verify-tracing-stack.py
       - name: Collect Compose diagnostics
         if: ${{ always() }}
         run: |
@@ -143,7 +147,7 @@ jobs:
           retention-days: 14
       - name: Stop local stack without deleting volumes
         if: ${{ always() }}
-        run: ./scripts/local-stack.sh down
+        run: docker compose -f compose.yaml -f compose.tracing.yaml down
 
   monitoring:
     name: Monitoring receiver and alert-rule tests

@@ -1486,6 +1486,14 @@ export async function createResponseWorkspace(
         id: randomUUID(),
         name: `${profile.data.name} · ${document.name}`,
         category: "Company evidence",
+        // This is written only while the immutable response/profile snapshot is
+        // created. Bid saves re-derive and verify it against that snapshot.
+        provenance: {
+          kind: "capture-profile" as const,
+          profileId,
+          profileVersion,
+          profileEvidenceId: document.id,
+        },
       }));
     const solicitationDocuments = (
       opportunity.data.documents as EvidenceDocument[]

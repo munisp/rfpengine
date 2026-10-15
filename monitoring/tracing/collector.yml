@@ -1,0 +1,47 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 128
+    spike_limit_mib: 32
+  attributes/privacy:
+    actions:
+      - { key: db.statement, action: delete }
+      - { key: db.query.text, action: delete }
+      - { key: http.request.header.authorization, action: delete }
+      - { key: http.request.header.cookie, action: delete }
+      - { key: http.request.body, action: delete }
+      - { key: idempotency_key, action: delete }
+      - { key: bidforge.idempotency_key, action: delete }
+      - { key: url.full, action: delete }
+  batch:
+    timeout: 1s
+    send_batch_size: 256
+    send_batch_max_size: 512
+exporters:
+  otlp_http/jaeger:
+    endpoint: http://jaeger:4318
+    timeout: 3s
+    sending_queue:
+      enabled: true
+      queue_size: 1024
+      num_consumers: 2
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 5s
+      max_elapsed_time: 30s
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/privacy, batch]
+      exporters: [otlp_http/jaeger]

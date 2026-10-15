@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { createHash } from "node:crypto";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
   bidAlerts,
@@ -9,6 +9,7 @@ import {
   bidWorkspaceHistory,
   bidWorkspaceMembers,
   bidWorkspaces,
+  captureResponses,
   users,
 } from "../../drizzle/schema";
 import {
@@ -19,8 +20,13 @@ import {
 } from "../../shared/bid";
 import { getDb } from "../db";
 import { notifyOwner } from "../_core/notification";
-import { evaluateQuality } from "./quality";
+import {
+  canonicalCapturedProfileProvenance,
+  capturedEvidenceScope,
+  type CapturedProfileBinding,
+} from "./grounding";
 import { validateApprovals } from "./approval";
+import { evaluateQuality } from "./quality";
 
 export type WorkspaceRole = "owner" | "editor" | "reviewer";
 
@@ -63,6 +69,129 @@ function parseData(data: unknown): WorkspaceData {
   const parsed = workspaceDataSchema.safeParse(data);
   if (!parsed.success) throw invalidStoredData();
   return parsed.data;
+}
+
+async function capturedProfileBindingTx(
+  tx: any,
+  workspaceId: string,
+  ownerUserId: number
+): Promise<CapturedProfileBinding | null> {
+  const [response] = await tx
+    .select({
+      profileId: captureResponses.profileId,
+      profileVersion: captureResponses.profileVersion,
+      profileSnapshot: captureResponses.profileSnapshot,
+    })
+    .from(captureResponses)
+    .where(
+      and(
+        eq(captureResponses.workspaceId, workspaceId),
+        eq(captureResponses.ownerUserId, ownerUserId)
+      )
+    )
+    .limit(1);
+  return response ?? null;
+}
+
+async function capturedProfileBindingsForWorkspaces(
+  workspaceIds: string[]
+): Promise<Map<string, CapturedProfileBinding>> {
+  if (!workspaceIds.length) return new Map();
+  const db = await getDb();
+  if (!db) throw unavailable();
+  const rows = await db
+    .select({
+      workspaceId: captureResponses.workspaceId,
+      profileId: captureResponses.profileId,
+      profileVersion: captureResponses.profileVersion,
+      profileSnapshot: captureResponses.profileSnapshot,
+    })
+    .from(captureResponses)
+    .where(inArray(captureResponses.workspaceId, workspaceIds));
+  return new Map(rows.map(row => [row.workspaceId, row]));
+}
+
+const sameProvenance = (
+  left: EvidenceDocument["provenance"],
+  right: EvidenceDocument["provenance"]
+) => JSON.stringify(left) === JSON.stringify(right);
+
+/**
+ * Capture bindings are server-derived from capture_responses, never from a
+ * workspace payload. A copied document with another profile's known origin is
+ * rejected. New unknown material remains usable, but starts unapproved so a
+ * person must review applicability before it can support a claim.
+ */
+export function scopeCapturedWorkspaceEvidence(
+  requested: WorkspaceData,
+  current: WorkspaceData,
+  binding: CapturedProfileBinding
+): WorkspaceData {
+  const existingById = new Map(
+    current.documents.map(document => [document.id, document])
+  );
+  const documents = requested.documents.map(document => {
+    const existing = existingById.get(document.id);
+    // Once Capture put a source marker on a document, a client cannot remove
+    // or replace it to change its company binding.
+    const candidate = existing?.provenance
+      ? { ...document, provenance: existing.provenance }
+      : document;
+    if (
+      existing?.provenance &&
+      document.provenance &&
+      !sameProvenance(existing.provenance, document.provenance)
+    ) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Captured profile evidence provenance is immutable.",
+      });
+    }
+
+    const scope = capturedEvidenceScope(candidate, binding);
+    if (scope.status === "other-profile") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Evidence bound to another company profile cannot be reused in this captured response.",
+      });
+    }
+    if (scope.status === "invalid") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Captured profile evidence does not match the frozen profile snapshot.",
+      });
+    }
+    if (scope.status === "same-profile-different-version") {
+      // A prior snapshot of the same company may still be imported, but it is
+      // no longer asserted as this response's frozen profile evidence.
+      return { ...document, approved: false, provenance: undefined };
+    }
+    if (scope.status === "trusted") {
+      const normalized = {
+        ...candidate,
+        provenance: canonicalCapturedProfileProvenance(
+          binding,
+          scope.profileEvidenceId
+        ),
+      };
+      // Reuse always creates a new document id. It must be reviewed in this
+      // pursuit even when it is byte-identical to same-profile frozen evidence.
+      // Pre-provenance Capture history has no marker, but exact matching bytes
+      // are still provably from this immutable snapshot and must survive a
+      // restore without discarding its prior review state.
+      return existing || !candidate.provenance
+        ? normalized
+        : { ...normalized, approved: false };
+    }
+
+    // Generic/manual source bytes have no company assertion. Preserve approval
+    // only for an already-stored document so a human can approve it on a later
+    // review save; a newly introduced document cannot self-approve.
+    return existing ? document : { ...document, approved: false };
+  });
+  return { ...requested, documents };
 }
 
 type WorkspaceMember = {
@@ -259,18 +388,15 @@ export async function saveWorkspace(
 ): Promise<Workspace> {
   const db = await getDb();
   if (!db) throw unavailable();
-  data = {
-    ...data,
-    quality: [
-      ...evaluateQuality(data),
-      ...data.quality.filter(issue => /omitted|truncated/i.test(issue.message)),
-    ],
-  };
+  const requestedData = data;
   const nextVersion = expectedVersion + 1;
   let ownerEvents: PursuitEvent[] = [];
   await db.transaction(async tx => {
     const current = await tx
-      .select({ data: bidWorkspaces.data })
+      .select({
+        data: bidWorkspaces.data,
+        ownerUserId: bidWorkspaces.ownerUserId,
+      })
       .from(bidWorkspaces)
       .where(
         and(
@@ -279,7 +405,26 @@ export async function saveWorkspace(
         )
       )
       .limit(1);
-    const priorData = current[0] ? parseData(current[0].data) : data;
+    const priorData = current[0] ? parseData(current[0].data) : requestedData;
+    const binding = current[0]
+      ? await capturedProfileBindingTx(tx, workspaceId, current[0].ownerUserId)
+      : null;
+    const scopedData = binding
+      ? scopeCapturedWorkspaceEvidence(requestedData, priorData, binding)
+      : requestedData;
+    const dataWithQuality: WorkspaceData = {
+      ...scopedData,
+      quality: [
+        ...evaluateQuality(scopedData),
+        ...scopedData.quality.filter(issue =>
+          /omitted|truncated/i.test(issue.message)
+        ),
+      ],
+    };
+    // Router validation happens before persistence, but captured-workspace
+    // normalization can revoke an attempted automatic approval. Validate the
+    // exact server-owned payload that will be written.
+    validateApprovals(dataWithQuality);
     const members = await tx
       .select({
         userId: bidWorkspaceMembers.userId,
@@ -290,13 +435,13 @@ export async function saveWorkspace(
       .from(bidWorkspaceMembers)
       .innerJoin(users, eq(bidWorkspaceMembers.userId, users.id))
       .where(eq(bidWorkspaceMembers.workspaceId, workspaceId));
-    const events = pursuitEvents(priorData, data, members);
+    const events = pursuitEvents(priorData, dataWithQuality, members);
     const now = new Date().toISOString();
     const savedData = events.length
       ? {
-          ...data,
+          ...dataWithQuality,
           activity: [
-            ...data.activity,
+            ...dataWithQuality.activity,
             ...events.map(event => ({
               id: nanoid(24),
               message: event.activity,
@@ -304,7 +449,7 @@ export async function saveWorkspace(
             })),
           ],
         }
-      : data;
+      : dataWithQuality;
     const result = await tx
       .update(bidWorkspaces)
       .set({ data: savedData, version: sql`${bidWorkspaces.version} + 1` })
@@ -763,20 +908,80 @@ export async function processDeadlineWatch(taskUid: string): Promise<void> {
 }
 
 export async function reusableEvidence(
-  userId: number
-): Promise<{ document: EvidenceDocument; pursuit: string }[]> {
+  userId: number,
+  targetWorkspaceId?: string
+): Promise<
+  {
+    document: EvidenceDocument;
+    pursuit: string;
+    reviewRequired?: boolean;
+  }[]
+> {
   const workspaces = await listWorkspaces(userId);
+  const bindings = await capturedProfileBindingsForWorkspaces(
+    workspaces.map(workspace => workspace.id)
+  );
+  let targetBinding: CapturedProfileBinding | null = null;
+  if (targetWorkspaceId) {
+    const access = await getAccessibleWorkspace(targetWorkspaceId, userId);
+    targetBinding = bindings.get(targetWorkspaceId) ?? null;
+    // The binding lookup is scoped to the workspace's actual owner, not the
+    // collaborator who happens to be opening the reuse library.
+    if (!targetBinding) {
+      const db = await getDb();
+      if (!db) throw unavailable();
+      targetBinding = await capturedProfileBindingTx(
+        db,
+        targetWorkspaceId,
+        access.ownerUserId
+      );
+    }
+  }
   const result = new Map<
     string,
-    { document: EvidenceDocument; pursuit: string }
+    { document: EvidenceDocument; pursuit: string; reviewRequired?: boolean }
   >();
-  for (const workspace of workspaces)
+  for (const workspace of workspaces) {
+    const sourceBinding = bindings.get(workspace.id) ?? null;
     for (const document of workspace.data.documents) {
       if (
-        document.approved &&
-        document.category.trim().toLowerCase() !== "solicitation"
+        !document.approved ||
+        document.category.trim().toLowerCase() === "solicitation"
       )
+        continue;
+      if (!targetBinding) {
         result.set(document.id, { document, pursuit: workspace.data.name });
+        continue;
+      }
+
+      // Verify a captured source against *its* immutable snapshot before
+      // deciding whether it is a company claim or merely manual material.
+      const sourceScope = sourceBinding
+        ? capturedEvidenceScope(document, sourceBinding)
+        : { status: "unknown" as const };
+      if (
+        sourceScope.status === "trusted" &&
+        sourceBinding?.profileId !== targetBinding.profileId
+      )
+        continue;
+      const targetScope = capturedEvidenceScope(document, targetBinding);
+      if (targetScope.status === "other-profile") continue;
+
+      const trustedForTarget =
+        sourceScope.status === "trusted" &&
+        sourceBinding?.profileId === targetBinding.profileId;
+      // Unknown or malformed source markers never grant an asserted company
+      // origin to the target. The copied bytes remain available for a human to
+      // review, but do not auto-approve or carry a forged provenance label.
+      const copied: EvidenceDocument = trustedForTarget
+        ? document
+        : { ...document, approved: false, provenance: undefined };
+      result.set(document.id, {
+        document: { ...copied, approved: false },
+        pursuit: workspace.data.name,
+        reviewRequired: true,
+      });
     }
+  }
   return [...result.values()];
 }
