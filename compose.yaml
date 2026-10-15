@@ -1,0 +1,201 @@
+name: bidforge-local
+
+services:
+  mysql:
+    image: mysql:8.4
+    env_file:
+      - ./.local-stack/mysql.env
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "127.0.0.1:13306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --host=127.0.0.1 --user=\"$$MYSQL_USER\" --password=\"$$MYSQL_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./.local-stack/app.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${BIDFORGE_WEB_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 45s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16.4-alpine
+    env_file:
+      - ./.local-stack/postgres.env
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --host=127.0.0.1 --username=\"$$POSTGRES_USER\" --dbname=\"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+
+  live-evidence-migrate:
+    build:
+      context: ./services/live-evidence
+      dockerfile: Dockerfile
+    env_file:
+      - ./.local-stack/live-evidence.env
+    command: ["python", "cli.py", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  live-evidence:
+    build:
+      context: ./services/live-evidence
+      dockerfile: Dockerfile
+    env_file:
+      - ./.local-stack/live-evidence.env
+    depends_on:
+      live-evidence-migrate:
+        condition: service_completed_successfully
+    secrets:
+      - source: api-tokens
+        target: api-tokens.json
+        mode: 0400
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; response = urlopen('http://127.0.0.1:8080/health', timeout=3); raise SystemExit(0 if response.status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.16.0
+    env_file:
+      - ./.local-stack/pg-exporter.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:9187:9187"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9187/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  local-alert-receiver:
+    build:
+      context: ./monitoring
+      dockerfile: Dockerfile
+    environment:
+      PORT: "8095"
+    secrets:
+      - source: alert-webhook-token
+        target: alert-webhook-token
+        mode: 0400
+    ports:
+      - "127.0.0.1:8095:8095"
+    volumes:
+      - alert-receiver-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; response = urlopen('http://127.0.0.1:8095/health', timeout=3); raise SystemExit(0 if response.status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    secrets:
+      - source: alert-webhook-token
+        target: alert-webhook-token
+        mode: 0400
+    depends_on:
+      local-alert-receiver:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:9093:9093"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9093/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/reservation-alerts.yml:/etc/prometheus/alerts/reservation-alerts.yml:ro
+      - prometheus-data:/prometheus
+    secrets:
+      - source: metrics-token
+        target: metrics-token
+        mode: 0400
+    depends_on:
+      live-evidence:
+        condition: service_healthy
+      postgres-exporter:
+        condition: service_healthy
+      alertmanager:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:9090:9090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+secrets:
+  api-tokens:
+    file: ./.local-stack/secrets/api-tokens.json
+  metrics-token:
+    file: ./.local-stack/secrets/metrics-token
+  alert-webhook-token:
+    file: ./.local-stack/secrets/alert-webhook-token
+
+volumes:
+  mysql-data:
+  postgres-data:
+  prometheus-data:
+  alertmanager-data:
+  alert-receiver-data:

@@ -1,3 +1,5 @@
+import { isLocalTestMode } from "./localTestMode";
+
 // Only these public values may reach the browser. Never serialize process.env.
 export function publicPlatformConfig(env: NodeJS.ProcessEnv = process.env) {
   return {
@@ -5,6 +7,7 @@ export function publicPlatformConfig(env: NodeJS.ProcessEnv = process.env) {
     oauthPortalUrl: env.MANUS_OAUTH_PORTAL_URL ?? "",
     apiUrl: env.MANUS_API_URL ?? "",
     apiBrowserKey: env.MANUS_API_BROWSER_KEY ?? "",
+    localTestMode: isLocalTestMode(env),
   };
 }
 

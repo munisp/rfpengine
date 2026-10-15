@@ -1,0 +1,69 @@
+groups:
+  - name: bidforge-reservation-commit
+    rules:
+      - alert: ReservationRetryExhausted
+        expr: sum by (sqlstate) (increase(bidforge_reservation_retry_exhaustions_total[5m])) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: live-evidence
+        annotations:
+          summary: Reservation commit retries exhausted
+          description: A reservation commit exhausted its retry budget and needs investigation.
+
+      - alert: ReservationDeadlockRateHigh
+        expr: sum(rate(bidforge_reservation_commit_attempts_total{sqlstate="40P01"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: live-evidence
+          sqlstate: "40P01"
+        annotations:
+          summary: Reservation deadlock rate is high
+          description: Deadlock retry attempts exceeded the configured rate threshold.
+
+      - alert: ReservationSerializationRetryRatioHigh
+        expr: (sum(increase(bidforge_reservation_retries_total{sqlstate="40001"}[5m])) / clamp_min(sum(increase(bidforge_reservation_commit_attempts_total[5m])), 1) > 0.05) and (sum(increase(bidforge_reservation_commit_attempts_total[5m])) >= 20)
+        for: 5m
+        labels:
+          severity: warning
+          service: live-evidence
+          sqlstate: "40001"
+        annotations:
+          summary: Reservation serialization retry ratio is high
+          description: Serialization retries exceeded the threshold while reservation traffic was active.
+
+      - alert: ReservationCommitLatencyP95High
+        expr: (histogram_quantile(0.95, sum by (le) (rate(bidforge_reservation_commit_duration_seconds_bucket[5m]))) > 2) and (sum(increase(bidforge_reservation_commit_duration_seconds_count[5m])) > 5)
+        for: 5m
+        labels:
+          severity: warning
+          service: live-evidence
+          sqlstate: none
+        annotations:
+          summary: Reservation commit latency p95 is high
+          description: The p95 reservation commit duration exceeded two seconds with sufficient traffic.
+
+      - alert: LiveEvidenceMetricsScrapeDown
+        expr: max(up{job="live-evidence"}) == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: live-evidence
+          sqlstate: none
+        annotations:
+          summary: Live evidence metrics scrape is down
+          description: Prometheus cannot scrape the authenticated live-evidence metrics endpoint.
+
+  - name: bidforge-postgres
+    rules:
+      - alert: PostgresDeadlocksDetected
+        expr: sum(increase(pg_stat_database_deadlocks[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: postgres
+          sqlstate: none
+        annotations:
+          summary: PostgreSQL deadlocks detected
+          description: PostgreSQL reported one or more database deadlocks during the alert window.

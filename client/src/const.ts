@@ -2,17 +2,20 @@ import { OAUTH_STATE_COOKIE, encodeOAuthState } from "@shared/const";
 
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
-// Start the Manus OAuth login. Call this from an event handler or effect at the
-// moment you want to navigate, e.g. `onClick={() => startLogin()}`.
-//
-// It has SIDE EFFECTS — it mints a one-time nonce, writes the __Host- state
-// cookie, and navigates immediately — so the cookie nonce always matches the
-// `state` it sends. Do NOT call it during render (no `href={startLogin()}` /
-// `loginUrl={...}`): each call overwrites the cookie, so a stray render-phase
-// call would desync it from an in-flight login and the callback would reject it
-// with "invalid oauth state". It returns void by design, so there is no URL to
-// stash across renders.
-export const startLogin = () => {
+function localTestLoginEnabled(): boolean {
+  // Do not trust a mutable runtime config object to enable password auth. This
+  // marker is emitted only by Express after the complete server-side guard.
+  return typeof document !== "undefined" && document.documentElement.dataset.localTest === "true";
+}
+
+/**
+ * Return the current login destination. In local Compose mode this is the
+ * explicit password form; otherwise this creates the OAuth state and URL.
+ * Call only from an action/effect because the OAuth branch writes a nonce cookie.
+ */
+export const getLoginUrl = (): string => {
+  if (localTestLoginEnabled()) return "/local-login";
+
   const oauthPortalUrl = window.__MANUS_CONFIG__?.oauthPortalUrl;
   const appId = window.__MANUS_CONFIG__?.projectId;
   if (!oauthPortalUrl || !appId) throw new Error("Manus login is not configured");
@@ -27,6 +30,15 @@ export const startLogin = () => {
   url.searchParams.set("redirectUri", redirectUri);
   url.searchParams.set("state", state);
   url.searchParams.set("responseType", "code");
+  return url.toString();
+};
 
-  window.location.href = url.toString();
+// Start the configured login. Call this from an event handler or effect at the
+// moment you want to navigate, e.g. `onClick={() => startLogin()}`.
+//
+// The hosted OAuth branch mints a one-time nonce and writes the state cookie.
+// Do NOT call it during render: a stray render-phase call could overwrite an
+// in-flight OAuth nonce and make its callback reject with "invalid oauth state".
+export const startLogin = () => {
+  window.location.href = getLoginUrl();
 };

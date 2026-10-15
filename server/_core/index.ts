@@ -3,6 +3,8 @@ import express from "express";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerLocalTestAuthRoutes } from "./localAuth";
+import { assertLocalTestConfiguration } from "./localTestMode";
 import { publicPlatformScript } from "./publicConfig";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -11,6 +13,7 @@ import { registerBidRoutes } from "../bid/routes";
 import { registerCaptureRoutes } from "../capture/routes";
 
 async function startServer() {
+  assertLocalTestConfiguration();
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
@@ -20,6 +23,7 @@ async function startServer() {
   app.get("/api/platform/config.js", (_req, res) => {
     res.set("Cache-Control", "no-store").type("application/javascript").send(publicPlatformScript());
   });
+  registerLocalTestAuthRoutes(app);
   registerOAuthRoutes(app);
   registerBidRoutes(app);
   registerCaptureRoutes(app);

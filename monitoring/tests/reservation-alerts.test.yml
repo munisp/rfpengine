@@ -1,0 +1,115 @@
+rule_files:
+  - ../reservation-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: retry exhaustion fires immediately
+    interval: 1m
+    input_series:
+      - series: 'bidforge_reservation_retry_exhaustions_total{sqlstate="40001"}'
+        values: '0 1 1'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: ReservationRetryExhausted
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              service: live-evidence
+              sqlstate: "40001"
+            exp_annotations:
+              summary: Reservation commit retries exhausted
+              description: A reservation commit exhausted its retry budget and needs investigation.
+
+  - name: deadlock rate fires after five minutes
+    interval: 1m
+    input_series:
+      - series: 'bidforge_reservation_commit_attempts_total{sqlstate="40P01"}'
+        values: '0+4x16'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ReservationDeadlockRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: live-evidence
+              sqlstate: "40P01"
+            exp_annotations:
+              summary: Reservation deadlock rate is high
+              description: Deadlock retry attempts exceeded the configured rate threshold.
+
+  - name: serialization retry ratio fires only with volume
+    interval: 1m
+    input_series:
+      - series: 'bidforge_reservation_retries_total{sqlstate="40001"}'
+        values: '0+2x16'
+      - series: 'bidforge_reservation_commit_attempts_total{sqlstate="success"}'
+        values: '0+20x16'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ReservationSerializationRetryRatioHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: live-evidence
+              sqlstate: "40001"
+            exp_annotations:
+              summary: Reservation serialization retry ratio is high
+              description: Serialization retries exceeded the threshold while reservation traffic was active.
+
+  - name: p95 latency fires with enough commits
+    interval: 1m
+    input_series:
+      - series: 'bidforge_reservation_commit_duration_seconds_bucket{le="1"}'
+        values: '0+0x16'
+      - series: 'bidforge_reservation_commit_duration_seconds_bucket{le="3"}'
+        values: '0+2x16'
+      - series: 'bidforge_reservation_commit_duration_seconds_bucket{le="+Inf"}'
+        values: '0+2x16'
+      - series: 'bidforge_reservation_commit_duration_seconds_count'
+        values: '0+2x16'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ReservationCommitLatencyP95High
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: live-evidence
+              sqlstate: none
+            exp_annotations:
+              summary: Reservation commit latency p95 is high
+              description: The p95 reservation commit duration exceeded two seconds with sufficient traffic.
+
+  - name: authenticated metrics target down fires after one minute
+    interval: 1m
+    input_series:
+      - series: 'up{job="live-evidence"}'
+        values: '0 0 0'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: LiveEvidenceMetricsScrapeDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              service: live-evidence
+              sqlstate: none
+            exp_annotations:
+              summary: Live evidence metrics scrape is down
+              description: Prometheus cannot scrape the authenticated live-evidence metrics endpoint.
+
+  - name: postgres deadlocks fires after five minutes of detection
+    interval: 1m
+    input_series:
+      - series: 'pg_stat_database_deadlocks{datname="bidforge"}'
+        values: '0+1x16'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PostgresDeadlocksDetected
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: postgres
+              sqlstate: none
+            exp_annotations:
+              summary: PostgreSQL deadlocks detected
+              description: PostgreSQL reported one or more database deadlocks during the alert window.

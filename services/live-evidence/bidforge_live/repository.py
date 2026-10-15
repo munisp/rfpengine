@@ -47,13 +47,21 @@ class ConflictError(ValueError):
 class Repository:
     """Small, synchronous psycopg repository; callers own HTTP authorization separately."""
 
-    def __init__(self, dsn: str | None = None):
+    def __init__(self, dsn: str | None = None, *, lock_timeout_ms: int = 3000, statement_timeout_ms: int = 15000):
         self.dsn = dsn or os.environ.get("DATABASE_URL", DEFAULT_DSN)
+        if not 1 <= lock_timeout_ms <= statement_timeout_ms <= 120000:
+            raise ValueError("Invalid bounded database timeout settings")
+        self.lock_timeout_ms = lock_timeout_ms
+        self.statement_timeout_ms = statement_timeout_ms
 
     @contextmanager
     def tx(self) -> Iterator[psycopg.Connection]:
-        with psycopg.connect(self.dsn, row_factory=dict_row) as conn:
+        with psycopg.connect(self.dsn, row_factory=dict_row, connect_timeout=5,
+                             application_name="bidforge-live-evidence") as conn:
             with conn.transaction():
+                conn.execute("SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
+                conn.execute("SELECT set_config('lock_timeout', %s, true)", (str(self.lock_timeout_ms) + "ms",))
+                conn.execute("SELECT set_config('statement_timeout', %s, true)", (str(self.statement_timeout_ms) + "ms",))
                 yield conn
 
     def migrate(self, schema_path: str | Path | None = None) -> None:
