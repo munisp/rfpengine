@@ -1,0 +1,1 @@
+ALTER TABLE `capture_settings` ADD `matchCursor` varchar(36);

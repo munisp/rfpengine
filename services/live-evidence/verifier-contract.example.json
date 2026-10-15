@@ -1,0 +1,26 @@
+{
+  "example-contract-only": {
+    "provider_id": "example-contract-only",
+    "access_authorized": false,
+    "endpoint": "https://verifier.example/v1/certificate",
+    "allowed_hosts": ["verifier.example"],
+    "credential_env": "CERTIFICATE_VERIFIER_API_KEY",
+    "method": "GET",
+    "query_parameter": "certificate_number",
+    "auth": {"mode": "bearer"},
+    "field_map": {
+      "credential_id": "record.certificate",
+      "issuer_id": "record.issuer",
+      "standard": "record.standard",
+      "status": "record.state",
+      "expiry_date": "record.expiry",
+      "scope_bindings": "record.scope"
+    },
+    "status_map": {
+      "current": "ACTIVE",
+      "suspended": "SUSPENDED",
+      "revoked": "REVOKED",
+      "expired": "EXPIRED"
+    }
+  }
+}

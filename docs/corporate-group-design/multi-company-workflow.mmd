@@ -1,0 +1,28 @@
+flowchart TD
+    A["Ingest authorized SAM.gov / TED notice"] --> B["Dedupe by publisher identity; retain revisions"]
+    B --> C["Verify notice scope, dates and requirements"]
+    C --> D["Score each company independently"]
+    D --> E["Separate fit score from eligibility"]
+    E --> F{"Eligibility result"}
+    F -->|"FAIL"| G["Block that company; show reasons"]
+    F -->|"UNKNOWN"| H["Request evidence or notice review"]
+    H --> C
+    F -->|"PASS"| I["Proposed: corporate-group review"]
+    I --> J{"Entity ownership, evidence conflicts and capacity resolved?"}
+    J -->|"No"| K["Preserve conflicting records; human adjudication"]
+    K --> L["Record resolution, authorization and resource allocation"]
+    L --> D
+    J -->|"Yes"| M["Human selects lead entity or approved teaming route"]
+    M --> N["Freeze company + notice + evidence versions"]
+    N --> O["Create separate company-specific response workspace"]
+    O --> P["Draft from authorized evidence only; review claims and price"]
+    P --> Q["Human approval and manual buyer submission"]
+    B --> R["Amendment or company/evidence change"]
+    R --> S["Invalidate affected reviews; retain prior response"]
+    S --> C
+    classDef current fill:#172333,stroke:#34D399,color:#f4f7fa;
+    classDef proposed fill:#2e2734,stroke:#e3ad61,color:#f4f7fa;
+    classDef stop fill:#3c222c,stroke:#e58796,color:#fff;
+    class A,B,C,D,E,F,N,O,P current;
+    class I,J,L,M proposed;
+    class G,H,K,S stop;

@@ -1,0 +1,53 @@
+{
+  "sample": true,
+  "note": "Explicit manual review overlays for built-in scenario IDs only. The script refuses to apply these to custom files.",
+  "reviews": [
+    {
+      "source": "sam",
+      "external_id": "SAM-1001",
+      "reviewed": true,
+      "required_statuses": [
+        "small business"
+      ],
+      "required_certifications": [
+        "ISO 27001"
+      ],
+      "imported_attachment_names": [
+        "SAM notice attachment"
+      ],
+      "value": "750000",
+      "currency": "USD",
+      "capabilities": [
+        "cloud migration",
+        "data migration"
+      ]
+    },
+    {
+      "source": "sam",
+      "external_id": "SAM-2002",
+      "reviewed": true,
+      "required_statuses": [],
+      "required_certifications": [],
+      "imported_attachment_names": [],
+      "value": "300000",
+      "currency": "USD",
+      "capabilities": [
+        "cloud migration"
+      ]
+    },
+    {
+      "source": "ted",
+      "external_id": "TED-2026-0001",
+      "reviewed": true,
+      "required_statuses": [],
+      "required_certifications": [],
+      "imported_attachment_names": [
+        "TED notice attachment"
+      ],
+      "scope_text": "Provide cloud migration services for transit systems under the framework; SAMPLE manually reviewed source text.",
+      "capabilities": [
+        "cloud migration"
+      ]
+    }
+  ]
+}

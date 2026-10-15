@@ -1,0 +1,48 @@
+{
+  "sample": true,
+  "note": "Byte-equivalent business content to sam_initial.json. It demonstrates content-hash duplicate suppression.",
+  "opportunitiesData": [
+    {
+      "noticeId": "SAM-1001",
+      "solicitationNumber": "AF-CLD-2026-01",
+      "title": "Cloud Migration Services",
+      "type": "Solicitation",
+      "baseType": "Solicitation",
+      "active": true,
+      "postedDate": "2026-10-01",
+      "responseDeadLine": "2026-11-15T17:00:00Z",
+      "naicsCode": "541512",
+      "classificationCode": "D302",
+      "descriptionText": "Migrate agency workloads and data to a secure cloud landing zone.",
+      "fullParentPathName": "Atlas Federal Procurement Office",
+      "placeOfPerformance": {
+        "state": {
+          "code": "United States"
+        }
+      },
+      "resourceLinks": [
+        "https://example.invalid/sam/SAM-1001/solicitation.pdf"
+      ]
+    },
+    {
+      "noticeId": "SAM-2002",
+      "solicitationNumber": "AF-OPS-2026-02",
+      "title": "Cloud Migration Operations Support",
+      "type": "Solicitation",
+      "baseType": "Solicitation",
+      "active": true,
+      "postedDate": "2026-10-03",
+      "reponseDeadLine": "2026-11-30T17:00:00Z",
+      "naicsCode": "541512",
+      "classificationCode": "D302",
+      "descriptionText": "Operations support for phased cloud migration services.",
+      "fullParentPathName": "Atlas Federal Procurement Office",
+      "placeOfPerformance": {
+        "state": {
+          "code": "United States"
+        }
+      },
+      "resourceLinks": []
+    }
+  ]
+}

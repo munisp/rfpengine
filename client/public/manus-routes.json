@@ -1,0 +1,60 @@
+{
+  "routes": [
+    {
+      "path": "/",
+      "title": "Capture overview"
+    },
+    {
+      "path": "/pursuits",
+      "title": "Pursuits"
+    },
+    {
+      "path": "/pursuits/:id",
+      "title": "Pursuit workspace"
+    },
+    {
+      "path": "/compliance",
+      "title": "Compliance matrix"
+    },
+    {
+      "path": "/studio",
+      "title": "Response studio"
+    },
+    {
+      "path": "/library",
+      "title": "Evidence library"
+    },
+    {
+      "path": "/pricing",
+      "title": "Price to win"
+    },
+    {
+      "path": "/reviews",
+      "title": "Team and reviews"
+    },
+    {
+      "path": "/settings",
+      "title": "Workspace settings"
+    },
+    {
+      "path": "/claim-review",
+      "title": "Claim evidence review wireframe"
+    },
+    {
+      "path": "/profiles",
+      "title": "Company profiles"
+    },
+    {
+      "path": "/discovery",
+      "title": "Opportunity discovery"
+    },
+    {
+      "path": "/sources",
+      "title": "Source integrations"
+    },
+    {
+      "path": "/pipeline",
+      "title": "Continuous pipeline"
+    }
+  ]
+}

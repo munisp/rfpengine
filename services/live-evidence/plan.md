@@ -1,0 +1,9 @@
+# Live evidence integration and PostgreSQL service
+
+Build a portable Python/FastAPI service around the existing deterministic adjudication engine. Add official SAM.gov and TED readers, an operator-configured licensed verifier adapter with fail-closed credential and contract checks, raw evidence snapshots, immutable notice revisions, current certificate validation records and assessment provenance. Live observation must never create human legal approval or inherited subsidiary eligibility.
+
+Use open-source PostgreSQL for a executable schema containing tenant-scoped legal entities, temporal enterprise relations, sites, independent company profile versions, authority/certificate scope and verification evidence, resource grants/requests/plans/reservations and audits. Prevent cross-tenant links, temporal hierarchy cycles and concurrent resource overbooking. Provide authenticated API routers for implemented services and register them in main.py. Verify actual migration, SQL constraints, API requests, generated OpenAPI UI and permitted public TED requests. Tests use a new local test database, not BidForge's existing managed database.
+
+No recurring ingestion schedule or always-on production deployment is activated. SAM credentials and the contracted verifier interface remain operator inputs; unavailable access returns explicit configuration/verification outcomes, not false validation. Do not scrape a protected registry or repurpose certification-body upload APIs as verifier APIs.
+
+Structure: bidforge_live/engine.py is the existing deterministic engine; adapters.py and network.py acquire authorized evidence; repository.py stores records; routes.py exposes enterprise and resource APIs; service.py bridges live verification with the engine; main.py authenticates and registers all routers. schema.sql is portable PostgreSQL DDL; tests cover acquisition, bridging, API isolation and database constraints.

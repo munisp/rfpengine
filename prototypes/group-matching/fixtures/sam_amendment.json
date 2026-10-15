@@ -1,0 +1,28 @@
+{
+  "sample": true,
+  "note": "SAMPLE amendment. Same source namespace and noticeId; changed content must stale a prior manual review.",
+  "opportunitiesData": [
+    {
+      "noticeId": "SAM-1001",
+      "solicitationNumber": "AF-CLD-2026-01-A1",
+      "title": "Cloud Migration Services \u2014 Amendment 1",
+      "type": "Solicitation",
+      "baseType": "Solicitation",
+      "active": true,
+      "postedDate": "2026-10-10",
+      "responseDeadLine": "2026-12-01T17:00:00Z",
+      "naicsCode": "541512",
+      "classificationCode": "D302",
+      "descriptionText": "Amended scope adds migration cutover planning; manual eligibility review must be repeated.",
+      "fullParentPathName": "Atlas Federal Procurement Office",
+      "placeOfPerformance": {
+        "state": {
+          "code": "United States"
+        }
+      },
+      "resourceLinks": [
+        "https://example.invalid/sam/SAM-1001/solicitation-amendment.pdf"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "sample": true,
+  "note": "SAMPLE local profiles. Corporate-group membership does not merge legal entities, certificates, evidence, or capacity.",
+  "profiles": [
+    {
+      "id": "atlas-federal",
+      "legal_entity": "Atlas Federal LLC",
+      "corporate_group_id": "atlas-group-demo",
+      "active": true,
+      "capabilities": ["cloud migration", "data migration", "zero trust"],
+      "naics": ["541512"],
+      "cpv": ["72000000"],
+      "geographies": ["United States", "global"],
+      "preferred_buyers": ["Atlas Federal Procurement Office"],
+      "statuses": [{"name": "small business", "valid_until": "2027-12-31", "attested": true}],
+      "certifications": [{"name": "ISO 27001", "valid_until": "2027-12-31", "approved": true}],
+      "min_value": "100000",
+      "max_value": "2000000",
+      "currency": "USD",
+      "capacity": "Dedicated cloud migration team available.",
+      "capacity_verified": true,
+      "evidence": [{"id": "alpha-evidence-1", "name": "Atlas Federal cloud case study", "category": "past performance", "owner_profile_id": "atlas-federal", "approved": true, "text": "Completed a cloud migration program."}]
+    },
+    {
+      "id": "atlas-cloud",
+      "legal_entity": "Atlas Cloud LLC",
+      "corporate_group_id": "atlas-group-demo",
+      "active": true,
+      "capabilities": ["cloud migration", "platform operations", "data migration"],
+      "naics": ["541512"],
+      "cpv": ["72000000"],
+      "geographies": ["Germany", "United States"],
+      "preferred_buyers": ["Berlin Transit Authority"],
+      "statuses": [{"name": "small business", "valid_until": "2027-12-31", "attested": true}],
+      "certifications": [{"name": "ISO 27001", "valid_until": "2027-12-31", "approved": true}],
+      "min_value": "100000",
+      "max_value": "1500000",
+      "currency": "USD",
+      "capacity": "European cloud delivery team available.",
+      "capacity_verified": true,
+      "evidence": [{"id": "beta-evidence-1", "name": "Atlas Cloud delivery record", "category": "past performance", "owner_profile_id": "atlas-cloud", "approved": true, "text": "Completed a European cloud migration program."}]
+    },
+    {
+      "id": "atlas-europe",
+      "legal_entity": "Atlas Europe Ltd",
+      "corporate_group_id": "atlas-group-demo",
+      "active": true,
+      "capabilities": ["cloud migration", "data migration", "service transition"],
+      "naics": ["541512"],
+      "cpv": ["72000000"],
+      "geographies": ["global"],
+      "preferred_buyers": [],
+      "statuses": [{"name": "small business", "valid_until": "2027-12-31", "attested": true}],
+      "certifications": [{"name": "ISO 27001", "valid_until": "2027-12-31", "approved": true}],
+      "min_value": "100000",
+      "max_value": "1500000",
+      "currency": "EUR",
+      "capacity": "Separate Europe transition team available.",
+      "capacity_verified": true,
+      "evidence": [{"id": "gamma-evidence-1", "name": "Atlas Europe migration record", "category": "past performance", "owner_profile_id": "atlas-europe", "approved": true, "text": "Completed a controlled cloud transition."}]
+    }
+  ],
+  "group_prototype": {
+    "note": "PROTOTYPE ONLY. These fields are not claimed to exist in the current application.",
+    "facts": [
+      {"id": "fact-1", "profile_id": "atlas-federal", "entity_id": "shared-platform-vendor", "predicate": "assurance-tier", "value": "gold", "valid_from": "2026-10-01", "valid_to": "2026-12-31", "source_span": "profiles.json#/group_prototype/facts/0"},
+      {"id": "fact-2", "profile_id": "atlas-cloud", "entity_id": "shared-platform-vendor", "predicate": "assurance-tier", "value": "not-approved", "valid_from": "2026-11-01", "valid_to": "2026-12-15", "source_span": "profiles.json#/group_prototype/facts/1"}
+    ],
+    "resource_claims": [
+      {"id": "resource-1", "profile_id": "atlas-federal", "resource_id": "architect-7", "valid_from": "2026-10-20", "valid_to": "2026-11-30", "source_span": "profiles.json#/group_prototype/resource_claims/0"},
+      {"id": "resource-2", "profile_id": "atlas-cloud", "resource_id": "architect-7", "valid_from": "2026-11-01", "valid_to": "2026-12-01", "source_span": "profiles.json#/group_prototype/resource_claims/1"}
+    ],
+    "evidence_bindings": [
+      {"id": "binding-1", "evidence_id": "alpha-evidence-1", "owner_profile_id": "atlas-federal", "claimed_for_profile_id": "atlas-cloud", "explicitly_authorized": false, "source_span": "profiles.json#/group_prototype/evidence_bindings/0"}
+    ]
+  }
+}

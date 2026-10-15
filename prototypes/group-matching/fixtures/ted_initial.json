@@ -1,0 +1,23 @@
+{
+  "sample": true,
+  "note": "SAMPLE saved TED v3 notices response. It is local fixture data only.",
+  "notices": [
+    {
+      "publication-number": "TED-2026-0001",
+      "notice-identifier": "2026/S 200-000001",
+      "notice-type": "Contract notice",
+      "title-proc": {"eng": ["Cloud migration framework"]},
+      "organisation-name-buyer": {"eng": "Berlin Transit Authority"},
+      "organisation-country-buyer": ["Germany"],
+      "classification-cpv": ["72000000"],
+      "main-classification-proc": ["72000000"],
+      "additional-classification-proc": [],
+      "estimated-value-proc": "600000",
+      "estimated-value-cur-proc": "EUR",
+      "publication-date": "2026-10-02",
+      "deadline-receipt-tender-date-lot": "2026-11-20T10:00:00Z",
+      "deadline-receipt-request": "2026-11-20T10:00:00Z",
+      "links": {"html": "https://example.invalid/ted/TED-2026-0001"}
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `fixed_bid_audit` ADD CONSTRAINT `fixed_bid_audit_caseId_fixed_bid_cases_id_fk` FOREIGN KEY (`caseId`) REFERENCES `fixed_bid_cases`(`id`) ON DELETE no action ON UPDATE no action;

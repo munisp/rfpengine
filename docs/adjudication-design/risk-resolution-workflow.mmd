@@ -1,0 +1,33 @@
+flowchart TD
+    A["Freeze notice, entity, evidence and policy versions"] --> B["Verify issuer record and certificate entity/site/activity scope"]
+    B --> C{"Parent certificate applicable to subsidiary under scheme and buyer rules?"}
+    C -->|"No"| D["Not applicable: require own credential or permitted alternative"]
+    C -->|"Uncertain"| E["Compliance review; obtain issuer annex or buyer clarification"]
+    C -->|"Verified inputs support scope"| F["Record scoped applicability; never copy parent status"]
+    E --> B
+    F --> G["Compare structured claims by entity, scope, unit and time"]
+    G --> H{"Conflict type"}
+    H -->|"Exact duplicate"| I["Auto-link equivalent records; retain originals"]
+    H -->|"Explicit trusted supersession"| J["Apply policy-defined supersession; preserve audit"]
+    H -->|"Material disagreement"| K["Hold; authorized reviewer assesses both sources"]
+    K --> L["Record evidence-backed resolution with rationale"]
+    L --> G
+    I --> M["Solve shared capacity using fixed commitments and authorized alternatives"]
+    J --> M
+    M --> N{"Complete feasible allocation found?"}
+    N -->|"No or search limit"| O["Hold; request resources or authorized scope/date change"]
+    O --> M
+    N -->|"Yes"| P["Tentative plan; no external booking"]
+    P --> Q["Compare lead candidates; exclude failed or unresolved gates"]
+    Q --> R["Human selects entity and records rationale"]
+    R --> S{"Assessment and resource versions still current?"}
+    S -->|"No"| A
+    S -->|"Yes"| T["Production only: authorize and reserve atomically"]
+    T --> U["Freeze permitted claims; create selected company response"]
+    U --> V["Human review and manual buyer submission"]
+    classDef auto fill:#172333,stroke:#34d399,color:#fff;
+    classDef review fill:#332a20,stroke:#e1b26b,color:#fff;
+    classDef hold fill:#39232c,stroke:#da8795,color:#fff;
+    class A,B,F,G,I,J,M,P,Q auto;
+    class C,H,L,R,S,T,U,V review;
+    class D,E,K,N,O hold;

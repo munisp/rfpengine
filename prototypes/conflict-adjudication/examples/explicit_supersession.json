@@ -1,0 +1,277 @@
+{
+  "policy": {
+    "allowedCertificateSchemes": [
+      "MANAGEMENT_SYSTEM_MULTISITE"
+    ],
+    "trustedAuthorities": [
+      "Accredited Certification Authority"
+    ],
+    "reviewerRoleAllowlist": [
+      "BidCommittee",
+      "ComplianceOfficer"
+    ]
+  },
+  "sources": [
+    {
+      "sourceID": "SRC-CERT-ATLAS",
+      "sourceKind": "external_certification_record",
+      "authority": "Accredited Certification Authority",
+      "issuerVerifiedInput": true,
+      "signedIssuer": true
+    },
+    {
+      "sourceID": "SRC-ANNEX-ATLAS",
+      "sourceKind": "certificate_annex",
+      "authority": "Accredited Certification Authority",
+      "signedIssuer": true
+    },
+    {
+      "sourceID": "SRC-BUYER-ATLAS",
+      "sourceKind": "buyer_acceptance_record",
+      "authority": "Buyer procurement office"
+    },
+    {
+      "sourceID": "SRC-REQ-1",
+      "sourceKind": "opportunity_requirement",
+      "authority": "Buyer procurement office"
+    },
+    {
+      "sourceID": "SRC-MAIN-TEAM",
+      "sourceKind": "resource_roster",
+      "authority": "AtlasCloud planning"
+    },
+    {
+      "sourceID": "SRC-ALT-TEAM",
+      "sourceKind": "resource_roster",
+      "authority": "AtlasServices planning"
+    },
+    {
+      "sourceID": "SRC-RQ-ALPHA",
+      "sourceKind": "request",
+      "authority": "BidForge planner"
+    },
+    {
+      "sourceID": "SRC-RQ-BETA",
+      "sourceKind": "request",
+      "authority": "BidForge planner"
+    }
+  ],
+  "entities": [
+    {
+      "entityID": "AtlasCloud",
+      "legalEntityID": "LE-ATLAS-CLOUD",
+      "siteIDs": [
+        "US-VA-1"
+      ],
+      "eligibility": "PASS",
+      "certificationRequirement": {
+        "scheme": "MANAGEMENT_SYSTEM_MULTISITE",
+        "requiredSiteIDs": [
+          "US-VA-1"
+        ],
+        "requiredActivity": "CLOUD_HOSTING",
+        "requiredThrough": "2026-10-18",
+        "buyerAcceptanceRequired": true,
+        "requirementRuleVersion": "BUYER-RULE-4",
+        "sourceID": "SRC-REQ-1"
+      }
+    },
+    {
+      "entityID": "AtlasEurope",
+      "legalEntityID": "LE-ATLAS-EUROPE",
+      "siteIDs": [
+        "DE-FRA-1"
+      ],
+      "eligibility": "PASS",
+      "parentOwnershipRelation": {
+        "parentEntityID": "AtlasHoldings",
+        "currentVerified": true,
+        "sourceID": "SRC-CERT-ATLAS"
+      },
+      "certificationRequirement": {
+        "scheme": "MANAGEMENT_SYSTEM_MULTISITE",
+        "requiredSiteIDs": [
+          "DE-FRA-1"
+        ],
+        "requiredActivity": "CLOUD_HOSTING",
+        "requiredThrough": "2026-10-18",
+        "buyerAcceptanceRequired": true,
+        "requirementRuleVersion": "BUYER-RULE-4",
+        "sourceID": "SRC-REQ-1"
+      }
+    }
+  ],
+  "certifications": [
+    {
+      "credentialID": "CERT-MSYS-7781",
+      "scheme": "MANAGEMENT_SYSTEM_MULTISITE",
+      "issuerVerified": true,
+      "verificationRecordID": "VERIFY-7781",
+      "checkedDate": "2026-10-01",
+      "expiryDate": "2027-06-30",
+      "active": true,
+      "suspended": false,
+      "revoked": false,
+      "coveredLegalEntityIDs": [
+        "LE-ATLAS-CLOUD"
+      ],
+      "coveredSiteIDs": [
+        "US-VA-1"
+      ],
+      "activityScope": [
+        "CLOUD_HOSTING"
+      ],
+      "certifiedSystemMembershipVerifiedDate": "2026-10-01",
+      "proofSourceIDs": [
+        "SRC-CERT-ATLAS",
+        "SRC-ANNEX-ATLAS"
+      ],
+      "sourceID": "SRC-CERT-ATLAS",
+      "externalTrustedRecord": true,
+      "humanAcceptance": true,
+      "effectiveDate": "2026-01-01",
+      "scopeBindings": [
+        {
+          "legalEntityID": "LE-ATLAS-CLOUD",
+          "siteIDs": [
+            "US-VA-1"
+          ],
+          "activityScope": [
+            "CLOUD_HOSTING"
+          ]
+        }
+      ]
+    }
+  ],
+  "buyerAcceptances": [
+    {
+      "entityID": "AtlasCloud",
+      "legalEntityID": "LE-ATLAS-CLOUD",
+      "siteIDs": [
+        "US-VA-1"
+      ],
+      "verifiedAllowedScope": true,
+      "evidenceID": "BUYER-EVID-112",
+      "reviewer": "ProcurementReviewerFixture",
+      "asOf": "2026-10-10",
+      "dateCoversThrough": "2026-10-18",
+      "requirementRuleVersion": "BUYER-RULE-4",
+      "relationshipCurrentVerified": true,
+      "jointContractRecognized": true,
+      "sourceID": "SRC-BUYER-ATLAS"
+    }
+  ],
+  "claims": [
+    {
+      "claimID": "CLAIM-1",
+      "entityID": "AtlasCloud",
+      "predicate": "management_system_scope",
+      "scope": {
+        "legalEntityIDs": [
+          "LE-ATLAS-CLOUD"
+        ],
+        "siteIDs": [
+          "US-VA-1"
+        ],
+        "activityScope": [
+          "CLOUD_HOSTING"
+        ]
+      },
+      "unit": "scope",
+      "value": "ANNEX-COVERED",
+      "validFrom": "2026-01-01",
+      "validThrough": "2027-06-30",
+      "sourceID": "SRC-ANNEX-ATLAS"
+    },
+    {
+      "claimID": "CLAIM-DISPUTED",
+      "entityID": "AtlasCloud",
+      "predicate": "management_system_scope",
+      "scope": {
+        "legalEntityIDs": [
+          "LE-ATLAS-CLOUD"
+        ],
+        "siteIDs": [
+          "US-VA-1"
+        ],
+        "activityScope": [
+          "CLOUD_HOSTING"
+        ]
+      },
+      "unit": "scope",
+      "value": "NOT-COVERED",
+      "validFrom": "2026-01-01",
+      "validThrough": "2027-06-30",
+      "sourceID": "SRC-CERT-ATLAS",
+      "supersedesClaimID": "CLAIM-1",
+      "supersededSourceID": "SRC-ANNEX-ATLAS"
+    }
+  ],
+  "resources": [
+    {
+      "resourceID": "main-team",
+      "entityID": "AtlasCloud",
+      "capacityHoursPerDay": 8,
+      "skills": [
+        "cloud"
+      ],
+      "sourceID": "SRC-MAIN-TEAM"
+    },
+    {
+      "resourceID": "alt-team",
+      "entityID": "AtlasServices",
+      "capacityHoursPerDay": 4,
+      "skills": [
+        "cloud"
+      ],
+      "entityAccess": [
+        {
+          "entityID": "AtlasCloud",
+          "contractApproved": true,
+          "startDate": "2026-10-01",
+          "endDate": "2026-10-31",
+          "sourceID": "SRC-ALT-TEAM"
+        }
+      ],
+      "sourceID": "SRC-ALT-TEAM"
+    }
+  ],
+  "requests": [
+    {
+      "requestID": "REQ-ALPHA",
+      "entityID": "AtlasCloud",
+      "startDate": "2026-10-13",
+      "endDate": "2026-10-15",
+      "quantityHoursPerDay": 6,
+      "requiredSkills": [
+        "cloud"
+      ],
+      "allowedResourceIDs": [
+        "main-team"
+      ],
+      "priority": 10,
+      "deadline": "2026-10-12",
+      "sourceID": "SRC-RQ-ALPHA"
+    },
+    {
+      "requestID": "REQ-BETA",
+      "entityID": "AtlasCloud",
+      "startDate": "2026-10-13",
+      "endDate": "2026-10-15",
+      "quantityHoursPerDay": 4,
+      "requiredSkills": [
+        "cloud"
+      ],
+      "allowedResourceIDs": [
+        "main-team",
+        "alt-team"
+      ],
+      "priority": 5,
+      "deadline": "2026-10-12",
+      "sourceID": "SRC-RQ-BETA"
+    }
+  ],
+  "existingReservations": [],
+  "sample": true,
+  "sampleNotice": "OFFLINE SAMPLE ONLY. Verification flags represent supplied assertions, not live verification."
+}

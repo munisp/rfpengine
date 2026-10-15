@@ -1,0 +1,16 @@
+flowchart TD
+  Q[Choose claim from filtered queue] --> C[Read exact claim and mandatory acceptance conditions]
+  C --> E[Inspect full evidence context, entity, authority and dates]
+  E --> S[Review separate provenance and illustrative semantic signals]
+  S --> G{All mandatory gates resolved and assessment current?}
+  G -->|Yes| D[Choose Approve, Request evidence or Reject]
+  G -->|No| B[Approve disabled; choose Request evidence or Reject]
+  D --> R[Enter reviewer rationale]
+  B --> R
+  R --> A[Record local human decision and audit event]
+  A --> N[Next claim; preserve per-claim rationale and draft]
+  C --> X[Edit claim wording]
+  X --> I[Invalidate assessment and clear prior local approval]
+  I --> U[Reset sample wording]
+  U --> T[Explicitly restore baseline sample assessment; not a verifier run]
+  T --> S

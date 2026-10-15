@@ -1,0 +1,141 @@
+{
+  "draft": {
+    "text": "We provide 24/7 monitoring and guarantee 99.99% uptime. We are ISO 9001 certified. We will provide quarterly reports if the customer supplies data. We have completed similar projects. We provide rehearsal support.",
+    "entity": "BidForge"
+  },
+  "evidence_documents": [
+    {
+      "id": "ops-reference",
+      "approved": true,
+      "reference_only": false,
+      "entity": "BidForge",
+      "scope": "business hours",
+      "assertions": [
+        {
+          "id": "business-hours-monitoring",
+          "text": "BidForge monitors services during business hours.",
+          "entity": "BidForge",
+          "scope": "business hours",
+          "metrics": [
+            {
+              "metric": "availability",
+              "value": "99.99",
+              "unit": "%",
+              "scope": "production",
+              "period": "monthly"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "expired-certificate",
+      "approved": true,
+      "reference_only": false,
+      "valid_from": "2023-01-01",
+      "valid_until": "2025-12-31",
+      "assertions": [
+        {
+          "id": "iso-9001",
+          "text": "BidForge was ISO 9001 certified.",
+          "entity": "BidForge",
+          "scope": "quality management"
+        }
+      ]
+    },
+    {
+      "id": "conditional-proposal",
+      "approved": true,
+      "reference_only": false,
+      "authorized_commitment": false,
+      "assertions": [
+        {
+          "id": "reports-may",
+          "text": "BidForge may provide quarterly reports if data is available."
+        }
+      ]
+    },
+    {
+      "id": "project-history",
+      "approved": true,
+      "reference_only": false,
+      "assertions": [
+        {
+          "id": "one-project",
+          "text": "One similar project was completed.",
+          "projects": [
+            {
+              "id": "PRJ-001",
+              "date": "2025-03-01",
+              "contexts": ["similar", "production"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rehearsal-approved",
+      "approved": true,
+      "reference_only": false,
+      "text": "Proposal capability statement: We provide rehearsal support.",
+      "assertions": [
+        {
+          "id": "rehearsal-quote",
+          "text": "We provide rehearsal support.",
+          "quote": "We provide rehearsal support."
+        }
+      ]
+    }
+  ],
+  "bindings": [
+    {"claim_index": 0, "evidence_id": "ops-reference", "assertion_id": "business-hours-monitoring"},
+    {"claim_index": 1, "evidence_id": "ops-reference", "assertion_id": "business-hours-monitoring"},
+    {"claim_index": 2, "evidence_id": "expired-certificate", "assertion_id": "iso-9001"},
+    {"claim_index": 3, "evidence_id": "conditional-proposal", "assertion_id": "reports-may"},
+    {"claim_index": 4, "evidence_id": "project-history", "assertion_id": "one-project"},
+    {"claim_index": 5, "evidence_id": "rehearsal-approved", "assertion_id": "rehearsal-quote"}
+  ],
+  "constraints": [
+    {
+      "id": "business-hours-is-not-247",
+      "type": "entity_scope",
+      "claim_index": 0,
+      "entity": "BidForge",
+      "scope": "24/7"
+    },
+    {
+      "id": "uptime-is-not-availability",
+      "type": "numeric",
+      "claim_index": 1,
+      "metric": "uptime",
+      "value": "99.99",
+      "unit": "%",
+      "scope": "production",
+      "period": "monthly",
+      "comparator": "ge"
+    },
+    {
+      "id": "certificate-expired",
+      "type": "date_valid",
+      "claim_index": 2
+    },
+    {
+      "id": "conditional-commitment-is-weaker",
+      "type": "negation_modality",
+      "claim_index": 3
+    },
+    {
+      "id": "two-projects-required",
+      "type": "minimum_projects",
+      "claim_index": 4,
+      "min_count": 2,
+      "after": "2024-01-01",
+      "required_contexts": ["similar"]
+    },
+    {
+      "id": "rehearsal-exact-quote",
+      "type": "exact_quote",
+      "claim_index": 5
+    }
+  ]
+}

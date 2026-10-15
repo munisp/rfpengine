@@ -1,0 +1,7 @@
+{
+  "provider": "ted",
+  "query": "publication-date >= 20261001",
+  "limit": 2,
+  "max_pages": 1,
+  "iteration": true
+}

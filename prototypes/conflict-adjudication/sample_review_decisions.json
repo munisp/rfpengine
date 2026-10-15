@@ -1,0 +1,10 @@
+{
+  "reviews": [
+    {
+      "type": "LEAD_SELECTION",
+      "leadEntityID": "AtlasCloud",
+      "assessmentHash": "c8f4e64ae9ca0c474314a7d5b366845defe9a4d860d68b3d1a706c00bed33694",
+      "reviewerRole": "BidCommittee"
+    }
+  ]
+}
