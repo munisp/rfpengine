@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -159,10 +160,12 @@ jobs:
         run: python -m pytest -q monitoring/tests
       - name: Validate Prometheus rules and routing
         run: |
-          mkdir -p /tmp/promtool-secrets
+          mkdir -p /tmp/promtool-secrets /tmp/prometheus-ci/alerts
+          cp monitoring/prometheus.yml /tmp/prometheus-ci/prometheus.yml
+          cp monitoring/reservation-alerts.yml /tmp/prometheus-ci/alerts/reservation-alerts.yml
           printf 'ci-monitor-token-fixture-not-a-live-credential\n' > /tmp/promtool-secrets/metrics-token
           chmod 644 /tmp/promtool-secrets/metrics-token
-          docker run --rm --entrypoint promtool -v "$PWD/monitoring:/etc/prometheus:ro" -v "$PWD/monitoring/reservation-alerts.yml:/etc/prometheus/alerts/reservation-alerts.yml:ro" -v "$PWD/monitoring:/rules:ro" -v /tmp/promtool-secrets:/run/secrets:ro prom/prometheus:v2.54.1 check config /etc/prometheus/prometheus.yml
+          docker run --rm --entrypoint promtool -v /tmp/prometheus-ci:/etc/prometheus:ro -v "$PWD/monitoring:/rules:ro" -v /tmp/promtool-secrets:/run/secrets:ro prom/prometheus:v2.54.1 check config /etc/prometheus/prometheus.yml
           docker run --rm --entrypoint promtool -v "$PWD/monitoring:/rules:ro" prom/prometheus:v2.54.1 check rules /rules/reservation-alerts.yml
           docker run --rm --entrypoint promtool -v "$PWD/monitoring:/rules:ro" prom/prometheus:v2.54.1 test rules /rules/tests/reservation-alerts.test.yml
       - name: Validate Alertmanager routing
